@@ -1,70 +1,79 @@
 name: Release Charts
 
 on:
-  push:
-    branches:
-      - development
-      - "[0-9]+.[0-9]+.x"
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - development
+  #     - "[0-9]+.[0-9]+.x"
+
+# jobs:
+#   release:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+
+#       - uses: azure/setup-helm@v4
+
+#       - name: Configure Git
+#         run: |
+#           git config user.name "$GITHUB_ACTOR"
+#           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+#       - name: Add Helm Repos
+#         run: |
+#           helm repo add stable https://charts.helm.sh/stable
+#           helm repo add nuclio https://nuclio.github.io/nuclio/charts
+#           helm repo add v3io-stable https://v3io.github.io/helm-charts/stable
+#           helm repo add minio https://charts.min.io/
+#           helm repo add spark-operator https://kubeflow.github.io/spark-operator
+#           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#           helm repo add bitnami https://charts.bitnami.com/bitnami
+
+#       - name: Run chart-releaser
+#         uses: helm/chart-releaser-action@v1.7.0
+#         env:
+#           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: azure/setup-helm@v4
-
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      - name: Add Helm Repos
-        run: |
-          helm repo add stable https://charts.helm.sh/stable
-          helm repo add nuclio https://nuclio.github.io/nuclio/charts
-          helm repo add v3io-stable https://v3io.github.io/helm-charts/stable
-          helm repo add minio https://charts.min.io/
-          helm repo add spark-operator https://kubeflow.github.io/spark-operator
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.7.0
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-
   notify_mlefi:
     runs-on: ubuntu-latest
-    needs: release # Ensure this runs after the release job
+    # needs: release  # Not needed for manual testing
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Ensure full history for tag retrieval
+      # - name: Checkout Code
+      #   uses: actions/checkout@v4
+      #   with:
+      #     fetch-depth: 0
 
-      - name: Extract Chart Version from Chart.yaml
-        run: |
-          CHART_VERSION=$(grep '^version:' charts/mlrun-ce/Chart.yaml | awk '{print $2}')
-          if [[ -z "$CHART_VERSION" ]]; then
-          echo "Error: Failed to extract version from Chart.yaml" >&2
-          exit 1
-          fi
-          TAG_NAME="$CHART_VERSION"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+      # - name: Extract Chart Version from Chart.yaml
+      #   run: |
+      #     CHART_VERSION=$(grep '^version:' charts/mlrun-ce/Chart.yaml | awk '{print $2}')
+      #     if [[ -z "$CHART_VERSION" ]]; then
+      #       echo "Error: Failed to extract version from Chart.yaml" >&2
+      #       exit 1
+      #     fi
+      #     TAG_NAME="$CHART_VERSION"
+      #     echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
-      - name: Debug Extracted Chart Version
-        run: |
-          echo "TAG_NAME is: '$TAG_NAME'"
+      # - name: Debug Extracted Chart Version
+      #   run: |
+      #     echo "TAG_NAME is: '$TAG_NAME'"
 
-      - name: Send repository dispatch event
+      - name: Send repository dispatch event (manual)
         run: |
-          JSON_PAYLOAD=$(jq -n --arg tag "$TAG_NAME" --arg target "community" --arg platform "linux" --arg debug "no" \
-            '{event_type: "helm-release", client_payload: {target_type: $target, tag_name: $tag, platform: $platform, debug: $debug}}')
+          JSON_PAYLOAD='{
+            "event_type": "helm-release",
+            "client_payload": {
+              "target_type": "community",
+              "tag_name": "0.8.0-rc9",
+              "platform": "linux",
+              "debug": "no"
+            }
+          }'
 
           echo "Sending JSON: $JSON_PAYLOAD"
 
